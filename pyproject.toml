@@ -1,0 +1,19 @@
+[project]
+name = "gpt-img-node"
+version = "0.1.0"
+description = "ComfyUI custom nodes for GPT image generation through OpenAI API keys or Codex/ChatGPT OAuth."
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = []
+classifiers = [
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Repository = "https://github.com/hub2vu/Compyui-GPT-img-node"
+Documentation = "https://github.com/hub2vu/Compyui-GPT-img-node#readme"
+"Bug Tracker" = "https://github.com/hub2vu/Compyui-GPT-img-node/issues"
+
+[tool.comfy]
+PublisherId = "hub2vu"
+DisplayName = "GPT img"

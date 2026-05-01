@@ -549,7 +549,11 @@ class GPTImgOAuthLLM:
                 "oauth_port": ("INT", {"default": 10531, "min": 1024, "max": 65535}),
                 "auto_start_oauth": ("BOOLEAN", {"default": True}),
                 "timeout_sec": ("INT", {"default": 300, "min": 30, "max": 3600}),
-            }
+            },
+            "optional": {
+                "system_prompt_input": PROMPT_INPUT_SOCKET,
+                "user_prompt_input": PROMPT_INPUT_SOCKET,
+            },
         }
 
     RETURN_TYPES = ("STRING", "STRING")
@@ -567,8 +571,12 @@ class GPTImgOAuthLLM:
         oauth_port,
         auto_start_oauth,
         timeout_sec,
+        system_prompt_input=None,
+        user_prompt_input=None,
     ):
         _ensure_oauth(oauth_port, auto_start_oauth)
+        system_prompt = _resolve_prompt_value(system_prompt, system_prompt_input)
+        prompt = _resolve_prompt_value(prompt, user_prompt_input)
         text, data = _llm_one(
             system_prompt,
             prompt,
@@ -594,7 +602,11 @@ class GPTImgAPILLM:
                 "reasoning_effort": (REASONING_EFFORT_VALUES, {"default": "medium"}),
                 "max_output_tokens": ("INT", {"default": 2048, "min": 16, "max": 128000}),
                 "timeout_sec": ("INT", {"default": 300, "min": 30, "max": 3600}),
-            }
+            },
+            "optional": {
+                "system_prompt_input": PROMPT_INPUT_SOCKET,
+                "user_prompt_input": PROMPT_INPUT_SOCKET,
+            },
         }
 
     RETURN_TYPES = ("STRING", "STRING")
@@ -611,7 +623,11 @@ class GPTImgAPILLM:
         reasoning_effort,
         max_output_tokens,
         timeout_sec,
+        system_prompt_input=None,
+        user_prompt_input=None,
     ):
+        system_prompt = _resolve_prompt_value(system_prompt, system_prompt_input)
+        prompt = _resolve_prompt_value(prompt, user_prompt_input)
         text, data = _llm_one(
             system_prompt,
             prompt,

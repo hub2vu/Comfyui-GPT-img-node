@@ -82,13 +82,80 @@ class LLMNodeTests(unittest.TestCase):
 
     def test_api_llm_node_contract_includes_api_key_and_reasoning_effort(self):
         module = load_gpt_img_node()
-        required = module.GPTImgAPILLM.INPUT_TYPES()["required"]
+        inputs = module.GPTImgAPILLM.INPUT_TYPES()
+        required = inputs["required"]
+        optional = inputs["optional"]
 
         self.assertIn("api_key", required)
         self.assertIn("reasoning_effort", required)
+        self.assertIn("system_prompt_input", optional)
+        self.assertIn("user_prompt_input", optional)
+        self.assertTrue(optional["system_prompt_input"][1]["forceInput"])
+        self.assertTrue(optional["user_prompt_input"][1]["forceInput"])
         self.assertEqual(required["reasoning_effort"][1]["default"], "medium")
         self.assertEqual(module.GPTImgAPILLM.RETURN_TYPES, ("STRING", "STRING"))
         self.assertEqual(module.GPTImgAPILLM.RETURN_NAMES, ("text", "raw_response_json"))
+
+    def test_oauth_llm_node_contract_includes_prompt_input_sockets(self):
+        module = load_gpt_img_node()
+        optional = module.GPTImgOAuthLLM.INPUT_TYPES()["optional"]
+
+        self.assertIn("system_prompt_input", optional)
+        self.assertIn("user_prompt_input", optional)
+        self.assertTrue(optional["system_prompt_input"][1]["forceInput"])
+        self.assertTrue(optional["user_prompt_input"][1]["forceInput"])
+
+    def test_api_llm_prefers_connected_prompt_inputs_over_widgets(self):
+        module = load_gpt_img_node()
+        captured = {}
+
+        def fake_post(auth_value, payload, timeout_sec):
+            captured["auth_value"] = auth_value
+            captured["payload"] = payload
+            captured["timeout_sec"] = timeout_sec
+            return "answer", {"id": "resp_456", "output": []}
+
+        with mock.patch.object(module, "_post_llm_api", side_effect=fake_post):
+            text, raw_json = module.GPTImgAPILLM().chat(
+                system_prompt="widget system",
+                prompt="widget user",
+                api_key="key",
+                model="gpt-5.5",
+                reasoning_effort="medium",
+                max_output_tokens=512,
+                timeout_sec=120,
+                system_prompt_input="socket system",
+                user_prompt_input="socket user",
+            )
+
+        self.assertEqual(text, "answer")
+        self.assertEqual(json.loads(raw_json)["id"], "resp_456")
+        self.assertEqual(captured["payload"]["input"][0]["content"], "socket system")
+        self.assertEqual(captured["payload"]["input"][1]["content"], "socket user")
+
+    def test_api_llm_falls_back_to_widget_prompts_when_inputs_unconnected(self):
+        module = load_gpt_img_node()
+        captured = {}
+
+        def fake_post(auth_value, payload, timeout_sec):
+            captured["payload"] = payload
+            return "answer", {"id": "resp_789", "output": []}
+
+        with mock.patch.object(module, "_post_llm_api", side_effect=fake_post):
+            module.GPTImgAPILLM().chat(
+                system_prompt="widget system",
+                prompt="widget user",
+                api_key="key",
+                model="gpt-5.5",
+                reasoning_effort="medium",
+                max_output_tokens=512,
+                timeout_sec=120,
+                system_prompt_input=None,
+                user_prompt_input=None,
+            )
+
+        self.assertEqual(captured["payload"]["input"][0]["content"], "widget system")
+        self.assertEqual(captured["payload"]["input"][1]["content"], "widget user")
 
 
 if __name__ == "__main__":

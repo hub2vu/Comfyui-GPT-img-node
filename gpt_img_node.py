@@ -20,6 +20,7 @@ OAUTH_PROCESS = None
 NODE_CATEGORY = "GPT img"
 OAUTH_MODELS = ["gpt-5.4", "gpt-5.4-mini", "gpt-5.5"]
 API_MODELS = ["gpt-5.5", "gpt-5", "gpt-5.4", "gpt-5.4-mini"]
+REASONING_EFFORT_VALUES = ["minimal", "low", "medium", "high", "xhigh"]
 QUALITY_VALUES = ["low", "medium", "high"]
 MODERATION_VALUES = ["low", "auto"]
 SIZE_VALUES = [
@@ -265,6 +266,27 @@ def _parse_json_image(res, provider_label):
     raise RuntimeError(f"No image data received from {provider_label}.")
 
 
+def _extract_response_text(data):
+    output_text = data.get("output_text")
+    if isinstance(output_text, str) and output_text:
+        return output_text
+
+    parts = []
+    for item in data.get("output", []):
+        for content in item.get("content", []):
+            if content.get("type") == "output_text" and content.get("text"):
+                parts.append(content["text"])
+    return "".join(parts)
+
+
+def _parse_json_text(res, provider_label):
+    data = json.loads(res.read().decode("utf-8"))
+    text = _extract_response_text(data)
+    if not text:
+        raise RuntimeError(f"No text data received from {provider_label}.")
+    return text
+
+
 def _post_response(url, payload, timeout_sec, headers, provider_label):
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
@@ -288,8 +310,42 @@ def _post_response(url, payload, timeout_sec, headers, provider_label):
         raise RuntimeError(_read_error(err)) from err
 
 
+def _post_llm_response(url, payload, timeout_sec, headers, provider_label):
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-GPT-Img-Client": "comfyui",
+            **headers,
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=int(timeout_sec)) as res:
+            data = json.loads(res.read().decode("utf-8"))
+            text = _extract_response_text(data)
+            if not text:
+                raise RuntimeError(f"No text data received from {provider_label}.")
+            return text, data
+    except urllib.error.HTTPError as err:
+        raise RuntimeError(_read_error(err)) from err
+
+
 def _post_oauth(oauth_port, payload, timeout_sec):
     return _post_response(
+        f"{_oauth_url(oauth_port)}/v1/responses",
+        payload,
+        timeout_sec,
+        {},
+        "openai-oauth",
+    )
+
+
+def _post_llm_oauth(oauth_port, payload, timeout_sec):
+    return _post_llm_response(
         f"{_oauth_url(oauth_port)}/v1/responses",
         payload,
         timeout_sec,
@@ -316,6 +372,42 @@ def _post_api(api_key, payload, timeout_sec):
         {"Authorization": f"Bearer {_resolve_api_key(api_key)}"},
         "OpenAI API",
     )
+
+
+def _post_llm_api(api_key, payload, timeout_sec):
+    return _post_llm_response(
+        "https://api.openai.com/v1/responses",
+        payload,
+        timeout_sec,
+        {"Authorization": f"Bearer {_resolve_api_key(api_key)}"},
+        "OpenAI API",
+    )
+
+
+def _llm_one(
+    system_prompt,
+    prompt,
+    model,
+    reasoning_effort,
+    max_output_tokens,
+    auth_value,
+    post_func,
+    timeout_sec,
+):
+    input_items = []
+    system_prompt = (system_prompt or "").strip()
+    if system_prompt:
+        input_items.append({"role": "developer", "content": system_prompt})
+    input_items.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": model,
+        "input": input_items,
+        "reasoning": {"effort": reasoning_effort},
+        "max_output_tokens": int(max_output_tokens),
+        "stream": False,
+    }
+    return post_func(auth_value, payload, timeout_sec)
 
 
 def _generate_one(
@@ -433,6 +525,95 @@ def _compose_advanced_generate_prompt(
         _section("Hard constraints", hard_constraints),
     ]
     return "\n\n".join(section for section in sections if section)
+
+
+class GPTImgOAuthLLM:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "system_prompt": ("STRING", {"multiline": True, "default": "You are a helpful assistant."}),
+                "prompt": ("STRING", {"multiline": True, "default": "Write a short answer."}),
+                "model": (OAUTH_MODELS, {"default": "gpt-5.4"}),
+                "reasoning_effort": (REASONING_EFFORT_VALUES, {"default": "medium"}),
+                "max_output_tokens": ("INT", {"default": 2048, "min": 16, "max": 128000}),
+                "oauth_port": ("INT", {"default": 10531, "min": 1024, "max": 65535}),
+                "auto_start_oauth": ("BOOLEAN", {"default": True}),
+                "timeout_sec": ("INT", {"default": 300, "min": 30, "max": 3600}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("text", "raw_response_json")
+    FUNCTION = "chat"
+    CATEGORY = NODE_CATEGORY
+
+    def chat(
+        self,
+        system_prompt,
+        prompt,
+        model,
+        reasoning_effort,
+        max_output_tokens,
+        oauth_port,
+        auto_start_oauth,
+        timeout_sec,
+    ):
+        _ensure_oauth(oauth_port, auto_start_oauth)
+        text, data = _llm_one(
+            system_prompt,
+            prompt,
+            model,
+            reasoning_effort,
+            max_output_tokens,
+            oauth_port,
+            _post_llm_oauth,
+            timeout_sec,
+        )
+        return text, json.dumps(data, ensure_ascii=False)
+
+
+class GPTImgAPILLM:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "system_prompt": ("STRING", {"multiline": True, "default": "You are a helpful assistant."}),
+                "prompt": ("STRING", {"multiline": True, "default": "Write a short answer."}),
+                "api_key": ("STRING", {"default": ""}),
+                "model": (API_MODELS, {"default": "gpt-5.5"}),
+                "reasoning_effort": (REASONING_EFFORT_VALUES, {"default": "medium"}),
+                "max_output_tokens": ("INT", {"default": 2048, "min": 16, "max": 128000}),
+                "timeout_sec": ("INT", {"default": 300, "min": 30, "max": 3600}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("text", "raw_response_json")
+    FUNCTION = "chat"
+    CATEGORY = NODE_CATEGORY
+
+    def chat(
+        self,
+        system_prompt,
+        prompt,
+        api_key,
+        model,
+        reasoning_effort,
+        max_output_tokens,
+        timeout_sec,
+    ):
+        text, data = _llm_one(
+            system_prompt,
+            prompt,
+            model,
+            reasoning_effort,
+            max_output_tokens,
+            api_key,
+            _post_llm_api,
+            timeout_sec,
+        )
+        return text, json.dumps(data, ensure_ascii=False)
 
 
 class GPTImgOAuthGenerate:

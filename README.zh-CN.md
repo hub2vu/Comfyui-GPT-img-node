@@ -3,7 +3,7 @@
 语言: [English](README.md) | [한국어](README.ko.md) | [中文](README.zh-CN.md)
 
 这是一个 ComfyUI 自定义节点包，可通过 OpenAI API Key 或 Codex/ChatGPT
-OAuth 使用 GPT 图像生成。
+OAuth 使用 GPT 图像生成和 ChatGPT LLM 文本回复。
 
 本节点包仅用于 ComfyUI。它不会运行独立的 Web UI、Express API、图库、会话存储
 或本地数据库。
@@ -13,14 +13,21 @@ OAuth 使用 GPT 图像生成。
 - `GPT img OAuth Generate`
 - `GPT img OAuth Generate Advanced`
 - `GPT img OAuth Edit`
+- `GPT img OAuth ChatGPT LLM`
 - `GPT img API Generate`
 - `GPT img API Generate Advanced`
 - `GPT img API Edit`
+- `GPT img API ChatGPT LLM`
 
-所有节点都会返回:
+图像节点会返回:
 
 - `image`
 - `revised_prompt`
+
+ChatGPT LLM 节点会返回:
+
+- `text`
+- `raw_response_json`
 
 ## 当前 Registry 状态
 
@@ -34,7 +41,7 @@ status: NodeVersionStatusPending
 extract_status: success
 ```
 
-当前仓库版本为 `0.1.1`。如需把新版本提交到 Registry，请重新运行 publish
+当前仓库版本为 `0.1.2`。如需把新版本提交到 Registry，请重新运行 publish
 workflow。由于已发布的 Registry 版本状态仍为 `Pending`，它可能暂时不会出现在
 ComfyUI Manager 搜索结果中。目前可以手动通过 Git 安装。等 Registry 版本状态变为
 `NodeVersionStatusActive` 后，应该就可以通过 Manager 安装。
@@ -51,19 +58,35 @@ Invoke-RestMethod "https://api.comfy.org/nodes/gpt-img-node/versions?include_sta
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/hub2vu/Compyui-GPT-img-node.git GPT-img
+git clone https://github.com/hub2vu/Comfyui-GPT-img-node.git GPT-img
 ```
 
 安装后重启 ComfyUI。
 
 ## API 节点
 
-使用 `GPT img API Generate` 或 `GPT img API Edit`。
+使用 `GPT img API Generate`、`GPT img API Edit` 或 `GPT img API ChatGPT LLM`。
 
 可以在节点的 `api_key` 输入框中填写 OpenAI API Key；如果留空，则会使用环境变量
 `OPENAI_API_KEY`。
 
 API 调用费用会由 OpenAI 向 API Key 所属账号计费。
+
+## ChatGPT LLM 节点
+
+当你想在 ComfyUI workflow 中获得 ChatGPT 模型的文本回复时，可以使用
+`GPT img OAuth ChatGPT LLM` 或 `GPT img API ChatGPT LLM`。
+
+ChatGPT LLM 输入:
+
+- `system_prompt`: 传给 assistant 的 developer/system 风格指令
+- `prompt`: 用户请求
+- `model`: 要调用的 ChatGPT 模型
+- `reasoning_effort`: `minimal`、`low`、`medium`、`high` 或 `xhigh`
+- `max_output_tokens`: 最大文本输出 token 数
+- `timeout_sec`: 请求超时时间
+
+API 节点还包含 `api_key`。OAuth 节点还包含 `oauth_port` 和 `auto_start_oauth`。
 
 ## Advanced Generate 节点
 
@@ -82,7 +105,7 @@ Advanced generate 输入:
 
 ## OAuth 节点
 
-使用 `GPT img OAuth Generate` 或 `GPT img OAuth Edit`。
+使用 `GPT img OAuth Generate`、`GPT img OAuth Edit` 或 `GPT img OAuth ChatGPT LLM`。
 
 要求:
 

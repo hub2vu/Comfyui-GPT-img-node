@@ -2,8 +2,8 @@
 
 언어: [English](README.md) | [한국어](README.ko.md) | [中文](README.zh-CN.md)
 
-OpenAI API 키 또는 Codex/ChatGPT OAuth로 GPT 이미지 생성을 사용할 수 있는
-ComfyUI 커스텀 노드입니다.
+OpenAI API 키 또는 Codex/ChatGPT OAuth로 GPT 이미지 생성과 ChatGPT LLM 텍스트 응답을
+사용할 수 있는 ComfyUI 커스텀 노드입니다.
 
 이 노드팩은 ComfyUI 전용입니다. 별도 웹 UI, Express API, 갤러리, 세션 저장소,
 로컬 데이터베이스를 실행하지 않습니다.
@@ -13,14 +13,21 @@ ComfyUI 커스텀 노드입니다.
 - `GPT img OAuth Generate`
 - `GPT img OAuth Generate Advanced`
 - `GPT img OAuth Edit`
+- `GPT img OAuth ChatGPT LLM`
 - `GPT img API Generate`
 - `GPT img API Generate Advanced`
 - `GPT img API Edit`
+- `GPT img API ChatGPT LLM`
 
-모든 노드는 다음을 반환합니다:
+이미지 노드는 다음을 반환합니다:
 
 - `image`
 - `revised_prompt`
+
+ChatGPT LLM 노드는 다음을 반환합니다:
+
+- `text`
+- `raw_response_json`
 
 ## 현재 Registry 상태
 
@@ -34,7 +41,7 @@ status: NodeVersionStatusPending
 extract_status: success
 ```
 
-이 저장소의 현재 버전은 `0.1.1`입니다. 새 버전을 Registry에 올리려면 publish
+이 저장소의 현재 버전은 `0.1.2`입니다. 새 버전을 Registry에 올리려면 publish
 workflow를 다시 실행해야 합니다. 공개된 Registry 버전 상태가 아직 `Pending`이므로
 ComfyUI Manager 검색에 바로 보이지 않을 수 있습니다. 현재는 수동 Git 설치가
 가능합니다. Registry 버전 상태가 `NodeVersionStatusActive`가 되면 Manager 설치도
@@ -52,19 +59,36 @@ Invoke-RestMethod "https://api.comfy.org/nodes/gpt-img-node/versions?include_sta
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/hub2vu/Compyui-GPT-img-node.git GPT-img
+git clone https://github.com/hub2vu/Comfyui-GPT-img-node.git GPT-img
 ```
 
 설치 후 ComfyUI를 재시작하세요.
 
 ## API 노드
 
-`GPT img API Generate` 또는 `GPT img API Edit`를 사용하세요.
+`GPT img API Generate`, `GPT img API Edit`, `GPT img API ChatGPT LLM`을 사용하세요.
 
 노드의 `api_key` 입력칸에 OpenAI API 키를 넣거나, 비워둔 상태에서 환경변수
 `OPENAI_API_KEY`를 설정할 수 있습니다.
 
 API 사용 요금은 API 키 소유자의 OpenAI 계정에 청구됩니다.
+
+## ChatGPT LLM 노드
+
+ComfyUI workflow 안에서 ChatGPT 모델의 텍스트 응답이 필요할 때
+`GPT img OAuth ChatGPT LLM` 또는 `GPT img API ChatGPT LLM`을 사용하세요.
+
+ChatGPT LLM 입력:
+
+- `system_prompt`: assistant에 적용할 developer/system 스타일 지시
+- `prompt`: 사용자 요청
+- `model`: 호출할 ChatGPT 모델
+- `reasoning_effort`: `minimal`, `low`, `medium`, `high`, `xhigh`
+- `max_output_tokens`: 최대 텍스트 출력 토큰
+- `timeout_sec`: 요청 제한 시간
+
+API 노드에는 `api_key`가 추가로 있고, OAuth 노드에는 `oauth_port`와
+`auto_start_oauth`가 추가로 있습니다.
 
 ## Advanced Generate 노드
 
@@ -83,7 +107,7 @@ Advanced generate 입력:
 
 ## OAuth 노드
 
-`GPT img OAuth Generate` 또는 `GPT img OAuth Edit`를 사용하세요.
+`GPT img OAuth Generate`, `GPT img OAuth Edit`, `GPT img OAuth ChatGPT LLM`을 사용하세요.
 
 필요한 것:
 

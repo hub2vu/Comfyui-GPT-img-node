@@ -2,8 +2,8 @@
 
 Languages: [English](README.md) | [한국어](README.ko.md) | [中文](README.zh-CN.md)
 
-ComfyUI custom nodes for GPT image generation through either OpenAI API keys or
-Codex/ChatGPT OAuth.
+ComfyUI custom nodes for GPT image generation and ChatGPT LLM text responses
+through either OpenAI API keys or Codex/ChatGPT OAuth.
 
 This node pack is ComfyUI-only. It does not run a separate web UI, Express API,
 gallery, session store, or local database.
@@ -13,14 +13,21 @@ gallery, session store, or local database.
 - `GPT img OAuth Generate`
 - `GPT img OAuth Generate Advanced`
 - `GPT img OAuth Edit`
+- `GPT img OAuth ChatGPT LLM`
 - `GPT img API Generate`
 - `GPT img API Generate Advanced`
 - `GPT img API Edit`
+- `GPT img API ChatGPT LLM`
 
-All nodes return:
+Image nodes return:
 
 - `image`
 - `revised_prompt`
+
+ChatGPT LLM nodes return:
+
+- `text`
+- `raw_response_json`
 
 ## Current Registry Status
 
@@ -34,7 +41,7 @@ status: NodeVersionStatusPending
 extract_status: success
 ```
 
-This repository is now `0.1.1`. Re-run the publish workflow to submit the newer
+This repository is now `0.1.2`. Re-run the publish workflow to submit the newer
 version to the Registry. Because the published version is still `Pending`, it may
 not appear in ComfyUI Manager search yet. Manual Git installation works now.
 Manager installation should become available after a Registry version becomes
@@ -52,19 +59,36 @@ Clone this repository into `ComfyUI/custom_nodes`:
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/hub2vu/Compyui-GPT-img-node.git GPT-img
+git clone https://github.com/hub2vu/Comfyui-GPT-img-node.git GPT-img
 ```
 
 Restart ComfyUI after installing.
 
 ## API Nodes
 
-Use `GPT img API Generate` or `GPT img API Edit`.
+Use `GPT img API Generate`, `GPT img API Edit`, or `GPT img API ChatGPT LLM`.
 
 Enter an OpenAI API key in the node's `api_key` field, or leave it empty and set
 `OPENAI_API_KEY` in your environment.
 
 API usage is billed to the API key owner by OpenAI.
+
+## ChatGPT LLM Nodes
+
+Use `GPT img OAuth ChatGPT LLM` or `GPT img API ChatGPT LLM` when you want a text
+response from a ChatGPT model inside a ComfyUI workflow.
+
+ChatGPT LLM inputs:
+
+- `system_prompt`: developer/system-style instructions for the assistant
+- `prompt`: the user request
+- `model`: the ChatGPT model to call
+- `reasoning_effort`: `minimal`, `low`, `medium`, `high`, or `xhigh`
+- `max_output_tokens`: maximum text output budget
+- `timeout_sec`: request timeout
+
+The API node also has `api_key`. The OAuth node also has `oauth_port` and
+`auto_start_oauth`.
 
 ## Advanced Generate Nodes
 
@@ -83,7 +107,8 @@ instruction conflicts with it.
 
 ## OAuth Nodes
 
-Use `GPT img OAuth Generate` or `GPT img OAuth Edit`.
+Use `GPT img OAuth Generate`, `GPT img OAuth Edit`, or
+`GPT img OAuth ChatGPT LLM`.
 
 Requirements:
 

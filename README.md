@@ -41,7 +41,7 @@ status: NodeVersionStatusPending
 extract_status: success
 ```
 
-This repository is now `0.1.2`. Re-run the publish workflow to submit the newer
+This repository is now `0.1.3`. Re-run the publish workflow to submit the newer
 version to the Registry. Because the published version is still `Pending`, it may
 not appear in ComfyUI Manager search yet. Manual Git installation works now.
 Manager installation should become available after a Registry version becomes
@@ -89,6 +89,23 @@ ChatGPT LLM inputs:
 
 The API node also has `api_key`. The OAuth node also has `oauth_port` and
 `auto_start_oauth`.
+
+## Image Generate Prompt Inputs
+
+Image generate nodes now expose both direct prompt widgets and optional prompt
+input sockets.
+
+Prompt inputs:
+
+- `system_prompt`: direct widget input for generation instructions
+- `prompt` or advanced prompt fields: direct widget input for the user request
+- `system_prompt_input`: optional STRING socket that overrides `system_prompt`
+  when connected
+- `user_prompt_input`: optional STRING socket that overrides the direct user
+  prompt when connected
+
+If a prompt socket is not connected, the node uses the text entered directly in
+the node widget.
 
 ## Advanced Generate Nodes
 

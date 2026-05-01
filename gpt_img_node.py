@@ -57,6 +57,7 @@ PROMPT_SUFFIX = (
     "\n\nKeep the image prompt close to the user's original text. Do not translate "
     "or restyle it unless the user requested that."
 )
+PROMPT_INPUT_SOCKET = ("STRING", {"forceInput": True})
 
 DEFAULT_GENERATION_INSTRUCTIONS = (
     "Create a product-only apparel design image for fashion planning.\n\n"
@@ -410,8 +411,15 @@ def _llm_one(
     return post_func(auth_value, payload, timeout_sec)
 
 
+def _resolve_prompt_value(widget_value, connected_value=None):
+    if connected_value is None:
+        return widget_value
+    return connected_value
+
+
 def _generate_one(
     prompt,
+    system_prompt,
     model,
     quality,
     size,
@@ -422,6 +430,7 @@ def _generate_one(
     timeout_sec,
 ):
     content = f"Generate an image: {prompt}{PROMPT_SUFFIX}"
+    developer_prompt = (system_prompt or "").strip() or GENERATE_DEVELOPER_PROMPT
     if references:
         user_content = [
             *[
@@ -436,7 +445,7 @@ def _generate_one(
     payload = {
         "model": model,
         "input": [
-            {"role": "developer", "content": GENERATE_DEVELOPER_PROMPT},
+            {"role": "developer", "content": developer_prompt},
             {"role": "user", "content": user_content},
         ],
         "tools": [
@@ -621,6 +630,7 @@ class GPTImgOAuthGenerate:
     def INPUT_TYPES(cls):
         return {
             "required": {
+                "system_prompt": ("STRING", {"multiline": True, "default": GENERATE_DEVELOPER_PROMPT}),
                 "prompt": ("STRING", {"multiline": True, "default": "a cinematic image"}),
                 "model": (OAUTH_MODELS, {"default": "gpt-5.4"}),
                 "quality": (QUALITY_VALUES, {"default": "medium"}),
@@ -632,6 +642,8 @@ class GPTImgOAuthGenerate:
                 "timeout_sec": ("INT", {"default": 300, "min": 30, "max": 3600}),
             },
             "optional": {
+                "system_prompt_input": PROMPT_INPUT_SOCKET,
+                "user_prompt_input": PROMPT_INPUT_SOCKET,
                 "reference_image": ("IMAGE",),
             },
         }
@@ -643,6 +655,7 @@ class GPTImgOAuthGenerate:
 
     def generate(
         self,
+        system_prompt,
         prompt,
         model,
         quality,
@@ -653,11 +666,26 @@ class GPTImgOAuthGenerate:
         auto_start_oauth,
         timeout_sec,
         reference_image=None,
+        system_prompt_input=None,
+        user_prompt_input=None,
     ):
         _ensure_oauth(oauth_port, auto_start_oauth)
+        system_prompt = _resolve_prompt_value(system_prompt, system_prompt_input)
+        prompt = _resolve_prompt_value(prompt, user_prompt_input)
         references = _tensor_batch_to_refs(reference_image)
         results = [
-            _generate_one(prompt, model, quality, size, moderation, references, oauth_port, _post_oauth, timeout_sec)
+            _generate_one(
+                prompt,
+                system_prompt,
+                model,
+                quality,
+                size,
+                moderation,
+                references,
+                oauth_port,
+                _post_oauth,
+                timeout_sec,
+            )
             for _ in range(int(n))
         ]
         return _return_images(results)
@@ -668,6 +696,7 @@ class GPTImgOAuthGenerateAdvanced:
     def INPUT_TYPES(cls):
         return {
             "required": {
+                "system_prompt": ("STRING", {"multiline": True, "default": GENERATE_DEVELOPER_PROMPT}),
                 "design_request": ("STRING", {"multiline": True, "default": "Men's navy summer suit."}),
                 "generation_instructions": (
                     "STRING",
@@ -691,6 +720,8 @@ class GPTImgOAuthGenerateAdvanced:
                 "timeout_sec": ("INT", {"default": 300, "min": 30, "max": 3600}),
             },
             "optional": {
+                "system_prompt_input": PROMPT_INPUT_SOCKET,
+                "user_prompt_input": PROMPT_INPUT_SOCKET,
                 "reference_image": ("IMAGE",),
             },
         }
@@ -702,6 +733,7 @@ class GPTImgOAuthGenerateAdvanced:
 
     def generate(
         self,
+        system_prompt,
         design_request,
         generation_instructions,
         reference_instructions,
@@ -715,6 +747,8 @@ class GPTImgOAuthGenerateAdvanced:
         auto_start_oauth,
         timeout_sec,
         reference_image=None,
+        system_prompt_input=None,
+        user_prompt_input=None,
     ):
         _ensure_oauth(oauth_port, auto_start_oauth)
         prompt = _compose_advanced_generate_prompt(
@@ -723,9 +757,22 @@ class GPTImgOAuthGenerateAdvanced:
             reference_instructions,
             hard_constraints,
         )
+        system_prompt = _resolve_prompt_value(system_prompt, system_prompt_input)
+        prompt = _resolve_prompt_value(prompt, user_prompt_input)
         references = _tensor_batch_to_refs(reference_image)
         results = [
-            _generate_one(prompt, model, quality, size, moderation, references, oauth_port, _post_oauth, timeout_sec)
+            _generate_one(
+                prompt,
+                system_prompt,
+                model,
+                quality,
+                size,
+                moderation,
+                references,
+                oauth_port,
+                _post_oauth,
+                timeout_sec,
+            )
             for _ in range(int(n))
         ]
         return _return_images(results)
@@ -776,6 +823,7 @@ class GPTImgAPIGenerate:
     def INPUT_TYPES(cls):
         return {
             "required": {
+                "system_prompt": ("STRING", {"multiline": True, "default": GENERATE_DEVELOPER_PROMPT}),
                 "prompt": ("STRING", {"multiline": True, "default": "a cinematic image"}),
                 "api_key": ("STRING", {"default": ""}),
                 "model": (API_MODELS, {"default": "gpt-5.5"}),
@@ -786,6 +834,8 @@ class GPTImgAPIGenerate:
                 "timeout_sec": ("INT", {"default": 300, "min": 30, "max": 3600}),
             },
             "optional": {
+                "system_prompt_input": PROMPT_INPUT_SOCKET,
+                "user_prompt_input": PROMPT_INPUT_SOCKET,
                 "reference_image": ("IMAGE",),
             },
         }
@@ -797,6 +847,7 @@ class GPTImgAPIGenerate:
 
     def generate(
         self,
+        system_prompt,
         prompt,
         api_key,
         model,
@@ -806,10 +857,25 @@ class GPTImgAPIGenerate:
         n,
         timeout_sec,
         reference_image=None,
+        system_prompt_input=None,
+        user_prompt_input=None,
     ):
+        system_prompt = _resolve_prompt_value(system_prompt, system_prompt_input)
+        prompt = _resolve_prompt_value(prompt, user_prompt_input)
         references = _tensor_batch_to_refs(reference_image)
         results = [
-            _generate_one(prompt, model, quality, size, moderation, references, api_key, _post_api, timeout_sec)
+            _generate_one(
+                prompt,
+                system_prompt,
+                model,
+                quality,
+                size,
+                moderation,
+                references,
+                api_key,
+                _post_api,
+                timeout_sec,
+            )
             for _ in range(int(n))
         ]
         return _return_images(results)
@@ -820,6 +886,7 @@ class GPTImgAPIGenerateAdvanced:
     def INPUT_TYPES(cls):
         return {
             "required": {
+                "system_prompt": ("STRING", {"multiline": True, "default": GENERATE_DEVELOPER_PROMPT}),
                 "design_request": ("STRING", {"multiline": True, "default": "Men's navy summer suit."}),
                 "generation_instructions": (
                     "STRING",
@@ -842,6 +909,8 @@ class GPTImgAPIGenerateAdvanced:
                 "timeout_sec": ("INT", {"default": 300, "min": 30, "max": 3600}),
             },
             "optional": {
+                "system_prompt_input": PROMPT_INPUT_SOCKET,
+                "user_prompt_input": PROMPT_INPUT_SOCKET,
                 "reference_image": ("IMAGE",),
             },
         }
@@ -853,6 +922,7 @@ class GPTImgAPIGenerateAdvanced:
 
     def generate(
         self,
+        system_prompt,
         design_request,
         generation_instructions,
         reference_instructions,
@@ -865,6 +935,8 @@ class GPTImgAPIGenerateAdvanced:
         n,
         timeout_sec,
         reference_image=None,
+        system_prompt_input=None,
+        user_prompt_input=None,
     ):
         prompt = _compose_advanced_generate_prompt(
             design_request,
@@ -872,9 +944,22 @@ class GPTImgAPIGenerateAdvanced:
             reference_instructions,
             hard_constraints,
         )
+        system_prompt = _resolve_prompt_value(system_prompt, system_prompt_input)
+        prompt = _resolve_prompt_value(prompt, user_prompt_input)
         references = _tensor_batch_to_refs(reference_image)
         results = [
-            _generate_one(prompt, model, quality, size, moderation, references, api_key, _post_api, timeout_sec)
+            _generate_one(
+                prompt,
+                system_prompt,
+                model,
+                quality,
+                size,
+                moderation,
+                references,
+                api_key,
+                _post_api,
+                timeout_sec,
+            )
             for _ in range(int(n))
         ]
         return _return_images(results)

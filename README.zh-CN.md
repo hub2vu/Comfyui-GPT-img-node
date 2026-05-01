@@ -41,7 +41,7 @@ status: NodeVersionStatusPending
 extract_status: success
 ```
 
-当前仓库版本为 `0.1.2`。如需把新版本提交到 Registry，请重新运行 publish
+当前仓库版本为 `0.1.3`。如需把新版本提交到 Registry，请重新运行 publish
 workflow。由于已发布的 Registry 版本状态仍为 `Pending`，它可能暂时不会出现在
 ComfyUI Manager 搜索结果中。目前可以手动通过 Git 安装。等 Registry 版本状态变为
 `NodeVersionStatusActive` 后，应该就可以通过 Manager 安装。
@@ -87,6 +87,19 @@ ChatGPT LLM 输入:
 - `timeout_sec`: 请求超时时间
 
 API 节点还包含 `api_key`。OAuth 节点还包含 `oauth_port` 和 `auto_start_oauth`。
+
+## 图像 Generate 提示词输入
+
+图像生成节点现在同时提供直接输入的提示词控件和可选的提示词输入 socket。
+
+提示词输入:
+
+- `system_prompt`: 直接输入生成指令的控件
+- `prompt` 或 advanced 提示词字段: 直接输入用户请求的控件
+- `system_prompt_input`: 连接后会覆盖 `system_prompt` 的可选 STRING socket
+- `user_prompt_input`: 连接后会覆盖直接输入的用户提示词的可选 STRING socket
+
+如果提示词 socket 没有连接，节点会使用直接在节点控件中输入的文本。
 
 ## Advanced Generate 节点
 
